@@ -1,50 +1,109 @@
 """Login Client"""
 import sys
 import socket
+import json
 
-server_IP = 127.0.0.1
+server_IP = "127.0.0.1"
 server_port = 25565
-count = 5
-data = 'X' * count
+server_address = (server_IP, server_port)
+dataSize = 1000000
 
-if len(argv) > 1:
-	server_IP = sys.argv[1] 
-	server_port = int(sys.argv[2]) 
-	count = int(sys.argv[3]) 
-	data = 'X' * count 
+OK = "OK"
+ERROR = "ERROR"
+ERROR_LOGIN = "ERROR_LOGIN"
 
-# Create UDP client socket. Note the use of SOCK_DGRAM
-clientsocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-## AF_NET - Address Family Internet (IPv4)
-## SOCK_DGRAM - Socket Datagram (UDP by default)
-## SOCK_STREAM - Socket Stream - TCP
-## These must be same on both sides
+def main():
+	if len(sys.argv) > 1:
+		server_IP = sys.argv[1] 
+		server_port = int(sys.argv[2]) 
+		count = int(sys.argv[3]) 
+		data = 'X' * count 
 
-# 3. Timeout in 1 second
-clientsocket.settimeout(1.0)
+	# Open socket
+	clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	# Establish TCP Connection
+	clientsocket.connect(server_address)
 
-for i in range(3): # 4. Iterate 3 times
+	# Determine what we'll send
+	interaction = enter_type()
+	credentials = enter_credentials()
+	user_choices = {
+		"type":interaction, 
+		"username":credentials["username"],
+		"password":credentials["password"]
+	}
+	#print("Got choices {}".format(user_choices))
+	data_string = json.dumps(user_choices)
+	encoded_data = data_string.encode()
+
 	# Send data to server
-	# 5. Print IP, Port, and Message when sending	
-	print("Sending data to   " + host + ", " + str(port) + ": " + data + " (" + str(count) + " characters)")
-	clientsocket.sendto(data.encode(), (host, port))
-	# data.encode() encodes the data from string to bytecode
+	#print("Sending data to {}: {}".format(server_address, encoded_data))
+	clientsocket.send(encoded_data)
+	response_data = {}
 
+	# Receive the server response
+	
 	try:
-		# Receive the server response
-		dataEcho, address = clientsocket.recvfrom(count)
+		#print("Awaiting response")
+		response = clientsocket.recv(dataSize)
+		#print(response)
+		response_string = response.decode()
+		response_data = json.loads(response_string)
 		# 6. Print IP, Port, and Message when receiving
-		print("Receive data from " + address[0] + ", " + str(address[1]) + ": " + dataEcho.decode())
-		break
+		print("Received data: {}".format(response_data))
 	except ConnectionResetError:
 		print("Server not Responding")
 		# Break here if you only want to attempt once on no server response
 	except socket.timeout:
 		print("Message Timed Out")
 	except:
-		print("Unknown Error")
+		print("Unexpected error:", sys.exc_info()[0])
+		print("Response Data:{}".format(response_data))
 
+	status = response_data["status"]
+	response_type = response_data["type"]
+	if status == "OK":
+		print("We're good")
+		clientsocket.close()
+		print("Nothing to do when logged in, so closing connection...")
+	elif status == "ERROR":
+		print("Invalid username or password")
+		clientsocket.close()
+		return
+	else:
+		print("We don't know if we're good, but probably not.")
+		clientsocket.close()
+		return
 	
+def enter_type():
+	"""
+	Asks user if login/register
+	Then asks for User/pass
+	returns "LOGIN" or "REGISTER"
+	"""
+	# Ask Login/Register
+	choice = ""
+	valid_choices = ["login","register","l","r"]
+	while choice not in valid_choices:
+		choice = input("Would you like to login or register? (l/r)")
 
-# Close the client socket
-clientsocket.close()
+	if choice[0].lower() == 'l':
+		return "LOGIN"
+	else:
+		return "REGISTER"
+
+def enter_credentials():
+	"""Asks user for credentials"""
+	credentials = {}
+	username = password = ""
+	while username == "" or password == "":
+		username = input("Enter a username:")
+		password = input("Enter a password:")
+		print("Got username:{} and password:{}".format(username,password))
+	credentials["username"] = username
+	credentials["password"] = password
+
+	return credentials
+
+if __name__ == "__main__":
+    main()

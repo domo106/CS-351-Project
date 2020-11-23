@@ -1,36 +1,83 @@
 """Login Server, allows clients to connect and log in."""
 import sys
 import socket
+import login_functions
+import json
 
 # Read server IP address and port from command-line arguments
 serverIP = "127.0.0.1"
 serverPort = 25565
+dataSize = 1000000
 
-if len(sys.argv) > 1:
-	serverIP = sys.argv[1]
-	serverPort = int(sys.argv[2])
+OK = "OK"
+ERROR = "ERROR"
+ERROR_LOGIN = "ERROR_LOGIN"
 
-# Create a UDP socket. Notice the use of SOCK_DGRAM for UDP packets
-serverSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-## Same settings as in client.py
+open_connections = {}
+# client_address:"username" when authenticated
+
+# Create a TCP socket.
+serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # Assign server IP address and port number to socket
 serverSocket.bind((serverIP, serverPort))
-# 127.0.0.1 (Loopback address)
-# Port: 12000 (arbitrary)
 
+# Listen for incoming connection requests
+serverSocket.listen(1)
 
 print("The server is ready to receive on port:  " + str(serverPort) + "\n")
 
 # Wait for message from client
 while True:
-    # Receive and print the client data from "data" socket
-    data, client_address = serverSocket.recvfrom(100) # Max space to receive each packet
-    client_IP, client_Port = client_address
-    client_message = data.decode()
-    print("Receive data from client {}, {}: {}".format(client_IP, client_Port, client_message))
+    # Establish TCP Connection
+    connectionSocket, client_address = serverSocket.accept()
+    print("Connection established")
 
-    # Echo back to client
+    # Receive client request, unpack data
+    data = connectionSocket.recv(dataSize)
+    print("Data fetched")
+
+    # data, client_address = serverSocket.recvfrom(1000) # Max space to receive each packet
+    client_IP, client_Port = client_address
+    client_json_str = data.decode()
+    client_data = json.loads(client_json_str)
+    print("Received data from client {}, {}: {}".format(client_IP, client_Port, client_data))
+
+    interaction_type = client_data["type"]
+    username = client_data["username"]
+    password = client_data["password"]
+    response_data = {"type":interaction_type, "status":""}
+    if interaction_type == "REGISTER":
+        # Register
+        error = login_functions.register_user(username, password)
+        if error == OK:
+            # Add to open connections
+            open_connections[client_address] = username
+            # Respond with register successful
+            response_data["status"] = "OK"
+        else:
+            # Respond with an error status
+            print("register threw an error")
+            response_data["status"] = "ERROR"
+    elif interaction_type == "LOGIN":
+        # Login
+        error = login_functions.login_user(username, password)
+        if error == OK:
+            # Add to open connections
+            # OK Response
+            response_data["status"] = "OK"
+        else:
+            # Error response
+            response_data["status"] = "ERROR"
+
+    else:
+        print("Received unexpected type: {}".format(interaction_type))
+        response_data["status"] = "ERROR"
     
-    print("Sending data to client {}, {}: {}".format(client_IP, client_Port, client_message))
-    serverSocket.sendto(data, client_address)
+    # Pack server response
+    response_json = json.dumps(response_data)
+    response_data = response_json.encode()
+
+    # Send back
+    print("Sending data to client {}: {}".format(client_address, response_json))
+    connectionSocket.send(response_data)
