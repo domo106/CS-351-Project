@@ -6,7 +6,7 @@ import json
 
 # Read server IP address and port from command-line arguments
 serverIP = "127.0.0.1"
-serverPort = 25565
+serverPort = 25575
 dataSize = 1000000
 
 OK = "OK"
@@ -69,7 +69,17 @@ while True:
         else:
             # Error response
             response_data["status"] = "ERROR"
-
+    elif interaction_type == "USER_LIST":
+        # Provide list of connected users.
+        user_list = open_connections.values()
+        response_data["status"] = "OK"
+        response_list = ""
+        this_username = open_connections[client_address]
+        for user in user_list:
+            if user != this_username:
+                response_list += "{},".format(user)
+        response_list = response_list.strip(',')
+        response_data["user_list"] = response_list
     else:
         print("Received unexpected type: {}".format(interaction_type))
         response_data["status"] = "ERROR"

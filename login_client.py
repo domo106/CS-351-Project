@@ -2,108 +2,116 @@
 import sys
 import socket
 import json
+import chat_client
 
-server_IP = "127.0.0.1"
-server_port = 25565
-server_address = (server_IP, server_port)
-dataSize = 1000000
+
 
 OK = "OK"
 ERROR = "ERROR"
 ERROR_LOGIN = "ERROR_LOGIN"
 
 def main():
-	if len(sys.argv) > 1:
-		server_IP = sys.argv[1] 
-		server_port = int(sys.argv[2]) 
-		count = int(sys.argv[3]) 
-		data = 'X' * count 
+    server_ip = "127.0.0.1"
+    server_port = 25575
+    data_size = 1000000
+    if len(sys.argv) > 1:
+        server_ip = sys.argv[1]
+        server_port = int(sys.argv[2])
+    server_address = (server_ip, server_port)
 
-	# Open socket
-	clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	# Establish TCP Connection
-	clientsocket.connect(server_address)
+    # Open socket
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Establish TCP Connection
+    client_socket.connect(server_address)
 
-	# Determine what we'll send
-	interaction = enter_type()
-	credentials = enter_credentials()
-	user_choices = {
-		"type":interaction, 
-		"username":credentials["username"],
-		"password":credentials["password"]
-	}
-	#print("Got choices {}".format(user_choices))
-	data_string = json.dumps(user_choices)
-	encoded_data = data_string.encode()
+    # Here we should check server DS
 
-	# Send data to server
-	#print("Sending data to {}: {}".format(server_address, encoded_data))
-	clientsocket.send(encoded_data)
-	response_data = {}
+    # Determine what we'll send
+    interaction = enter_type()
+    credentials = enter_credentials()
+    user_choices = {
+        "type":interaction,
+        "username":credentials["username"],
+        "password":credentials["password"]
+    }
+    #print("Got choices {}".format(user_choices))
+    data_string = json.dumps(user_choices)
+    encoded_data = data_string.encode()
 
-	# Receive the server response
-	
-	try:
-		#print("Awaiting response")
-		response = clientsocket.recv(dataSize)
-		#print(response)
-		response_string = response.decode()
-		response_data = json.loads(response_string)
-		# 6. Print IP, Port, and Message when receiving
-		print("Received data: {}".format(response_data))
-	except ConnectionResetError:
-		print("Server not Responding")
-		# Break here if you only want to attempt once on no server response
-	except socket.timeout:
-		print("Message Timed Out")
-	except:
-		print("Unexpected error:", sys.exc_info()[0])
-		print("Response Data:{}".format(response_data))
+    # Send data to server
+    #print("Sending data to {}: {}".format(server_address, encoded_data))
+    client_socket.send(encoded_data)
+    response_data = {}
 
-	status = response_data["status"]
-	response_type = response_data["type"]
-	if status == "OK":
-		print("We're good")
-		clientsocket.close()
-		print("Nothing to do when logged in, so closing connection...")
-	elif status == "ERROR":
-		print("Invalid username or password")
-		clientsocket.close()
-		return
-	else:
-		print("We don't know if we're good, but probably not.")
-		clientsocket.close()
-		return
-	
+    # Receive the server response
+
+    try:
+        #print("Awaiting response")
+        response = client_socket.recv(data_size)
+        #print(response)
+        response_string = response.decode()
+        response_data = json.loads(response_string)
+        # 6. Print IP, Port, and Message when receiving
+        print("Received data: {}".format(response_data))
+    except ConnectionResetError:
+        print("Server not Responding")
+        # Break here if you only want to attempt once on no server response
+    except socket.timeout:
+        print("Message Timed Out")
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
+        print("Response Data:{}".format(response_data))
+
+    status = response_data["status"]
+    response_type = response_data["type"]
+    if status == "OK":
+        print("We're good")
+    elif status == "ERROR":
+        print("Invalid username or password")
+        client_socket.close()
+        return
+    else:
+        print("We don't know if we're good, but probably not.")
+        client_socket.close()
+        return
+
+    # Starting chat client...
+    chat_client.main_user_list(client_socket)
+    # finished with chat client
+    print("Chat client closed, disconnecting...")
+    client_socket.close()
+    # print("Nothing to do when logged in, so closing connection...")
+
+
 def enter_type():
-	"""
-	Asks user if login/register
-	Then asks for User/pass
-	returns "LOGIN" or "REGISTER"
-	"""
-	# Ask Login/Register
-	choice = ""
-	valid_choices = ["login","register","l","r"]
-	while choice not in valid_choices:
-		choice = input("Would you like to login or register? (l/r)")
+    """
+    Asks user if login/register
+    Then asks for User/pass
+    returns "LOGIN" or "REGISTER"
+    """
+    # Ask Login/Register
+    choice = ""
+    valid_choices = ["login","register","l","r"]
+    while choice not in valid_choices:
+        choice = input("Would you like to login or register? (l/r)")
 
-	if choice[0].lower() == 'l':
-		return "LOGIN"
-	else:
-		return "REGISTER"
+    if choice[0].lower() == 'l':
+        return "LOGIN"
+    else:
+        return "REGISTER"
 
 def enter_credentials():
-	"""Asks user for credentials"""
-	credentials = {}
-	username = password = ""
-	while username == "" or password == "":
-		username = input("Enter a username:")
-		password = input("Enter a password:")
-		print("Got username:{} and password:{}".format(username,password))
-	credentials["username"] = username
-	credentials["password"] = password
+    """Asks user for credentials"""
+    credentials = {}
+    username = password = ""
+    while username == "" or password == "":
+        username = input("Enter a username:")
+        password = input("Enter a password:")
+        print("Got username:{} and password:{}".format(username,password))
+    credentials["username"] = username
+    credentials["password"] = password
 
-	return credentials
+    return credentials
 
 if __name__ == "__main__":
     main()
