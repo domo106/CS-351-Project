@@ -8,6 +8,7 @@ from encoding import json_decode, json_encode
 import encoding
 import threading
 from Crypto.PublicKey import RSA
+import time
 
 p2p_ip = "127.0.0.1"
 p2p_port = 26665
@@ -66,26 +67,20 @@ def await_connection(server_socket, user_name):
 	peer_socket, peer_address = await_socket.accept()
 	print("Connection with B Accepted")
 
+	# Await B's name
+	name_data = peer_socket.recv(dataSize)
+	name_dict = json_decode(name_data)
+	print("B Name Dict:", name_dict)
+	b_name = name_dict["peer_name"]
+
 	#Await/Accept Public key of B
 	b_public_string = peer_socket.recv(dataSize)
 
 	# Generate Keys as encoded strings
-	a_public_string, a_private_string, a_session_string = encoding.generate_keys()
+	a_private_string, a_public_string,  a_session_string = encoding.generate_keys()
 
 	# Send Public.A -> B
 	peer_socket.send(a_public_string)
-
-	# A.confirm(B) -> Server
-	# Confirm connection with Server
-	data = {"type":"P2P_CONFIRM", "peer":peer_address}
-	encoded_data = json.dumps(data).encode()
-	server_socket.send(encoded_data)
-	# Receive confirmation from server
-	encoded_confirmation = server_socket.recv(dataSize)
-	confirmation = json_decode(encoded_confirmation)
-	if confirmation["type"] != "P2P_CONFIRM":
-		print("Got an invalid confirmation type: {}".format(confirmation["type"]))
-	peer_name = confirmation["peer_name"]
 
 	# Establish encrypted chat with other client
 	print("Engaging in chat with client: {}".format(peer_address))
@@ -94,7 +89,8 @@ def await_connection(server_socket, user_name):
 		"peer_public_key": RSA.import_key(b_public_string),
 		"my_session_key": a_session_string,
 	}
-	encrypt_chat(peer_socket, keys, peer_name, user_name)
+	# print("A has private key:",keys["my_private_key"])
+	encrypt_chat(peer_socket, keys, b_name, user_name)
 
 def establish_connection(server_socket, peer_address, peer_name, user_name):
 	"""
@@ -107,8 +103,19 @@ def establish_connection(server_socket, peer_address, peer_name, user_name):
 	peer_ip = peer_address[0]
 	peer_socket.connect((peer_ip, p2p_port))
 
+	# B.confirm(A) -> Server
+	# Confirm connection with Server
+	data = {"type": "P2P_CONFIRM", "peer_name": peer_name, "my_name":user_name}
+	encoded_data = json.dumps(data).encode()
+	server_socket.send(encoded_data)
+
+	# Send B's name to A
+	data = {"type": "NAME", "peer_name": user_name}
+	encoded_data = json.dumps(data).encode()
+	peer_socket.send(encoded_data)
+
 	# Generate Keys as encoded strings
-	b_public_string, b_private_string, b_session_string = encoding.generate_keys()
+	b_private_string, b_public_string,  b_session_string = encoding.generate_keys()
 
 	# Give A Public.B
 	peer_socket.send(b_public_string)
@@ -122,6 +129,7 @@ def establish_connection(server_socket, peer_address, peer_name, user_name):
 		"peer_public_key": RSA.import_key(a_public_string),
 		"my_session_key": b_session_string,
 	}
+	#print("B has private key:", keys["my_private_key"])
 
 	# Confirm with server
 	# This is basically optional for 2 clients
@@ -137,13 +145,18 @@ def encrypt_chat(peer_socket, keys, peer_name, user_name):
 	Establishes an encrypted chat with the peer
 	Manages chat UI with the peer
 	"""
+
 	class ChatInput(threading.Thread):
 		def run(self):
 			while True:
 				# Receive Encoded
-				message_data = peer_socket.recv(dataSize)
-				# Encoded to JSON
-				peer_message_dict = json_decode(message_data)
+				byte_types = ['ciphertext', 'encrypted_session_key', 'nonce', 'tag']
+				peer_message_dict = {}
+				for key in byte_types:
+					thing = peer_socket.recv(dataSize)
+					peer_message_dict[key] = thing
+					print(key, len(key))
+
 				# JSON to text
 				message = encoding.decrypt_message(peer_message_dict, keys)
 				print("{}:{}".format(peer_name, message))
@@ -156,12 +169,19 @@ def encrypt_chat(peer_socket, keys, peer_name, user_name):
 	print("We are now chatting securely.")
 	try:
 		while True:
+			byte_types = ['ciphertext', 'encrypted_session_key', 'nonce', 'tag']
 			local_message = input("{}:".format(user_name))
 			# Text to JSON
 			message_dict = encoding.encrypt_message(local_message, keys)
+			for key in message_dict:
+				print(key, len(key))
+			# Send all JSON values
+			for key in byte_types:
+				peer_socket.send(message_dict[key])
+				time.sleep(0.1)
 			# JSON to encoded
-			encoded_message = json_encode(message_dict)
-			peer_socket.send(encoded_message)
+			#encoded_message = json_encode(message_dict)
+			#peer_socket.send(encoded_message)
 
 
 	except KeyboardInterrupt:

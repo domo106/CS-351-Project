@@ -3,6 +3,7 @@ import json
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES, PKCS1_OAEP
+import struct
 
 def json_decode(encoded_data):
     """Takes encoded data and converts to dictionary"""
@@ -52,13 +53,14 @@ def encrypt_message(text, keys):
 
     cipher_aes = AES.new(my_session_key, AES.MODE_EAX)
     ciphertext, tag = cipher_aes.encrypt_and_digest(encoded_text)
-
+    print("Got ciphertext:", ciphertext)
     return_data = {
         "encrypted_session_key" : enc_session_key,
         "nonce" : cipher_aes.nonce,
         "tag" : tag,
         "ciphertext" : ciphertext,
     }
+    #print("Sending Data in dict:",return_data)
     return return_data
 
 def decrypt_message(data_dict, keys):
@@ -68,13 +70,16 @@ def decrypt_message(data_dict, keys):
     Keys should contain my_private_key
     Returns plaintext message
     """
+    #print("Got data in keys:",keys)
+    #for key in keys:
+    #    print(key,type(keys[key]))
     # Fetch keys and stuff
     encrypted_session_key = data_dict["encrypted_session_key"]
     nonce = data_dict["nonce"]
     tag = data_dict["tag"]
     ciphertext = data_dict["ciphertext"]
     my_private_key = keys["my_private_key"]
-
+    #print("Got private Key:",my_private_key)
     # Decrypt session key
     cipher_rsa = PKCS1_OAEP.new(my_private_key)
     session_key = cipher_rsa.decrypt(encrypted_session_key)
@@ -84,3 +89,18 @@ def decrypt_message(data_dict, keys):
     encoded_message = cipher_aes.decrypt_and_verify(ciphertext, tag)
     text = encoded_message.decode("utf-8")
     return text
+"""
+keys = generate_keys()
+key_dict = {
+    "my_private_key": RSA.import_key(keys[0]),
+    "peer_public_key": RSA.import_key(keys[1]),
+    "my_session_key": keys[2],
+}
+for key in key_dict:
+    print("Generated key {} of type {}".format(key, key_dict[key]))
+message = "Hello World!"
+data = encrypt_message(message, key_dict)
+
+message = decrypt_message(data, key_dict)
+print(message)
+"""

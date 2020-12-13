@@ -102,6 +102,7 @@ def connect_client(connectionSocket, client_address):
                 else:
                     wait_list[this_username] = client_address
                     response_data["status"] = "OK"
+            continue # DO NOT send an await confirmation
         elif interaction_type == "GET_ADDRESS":
             print("Fetching an address")
             user_requested = client_data["user_name"]
@@ -110,17 +111,12 @@ def connect_client(connectionSocket, client_address):
             response_data["status"] = "OK"
         elif interaction_type == "P2P_CONFIRM":
             print("Got a connection confirmation")
-            client_name = open_connections[client_address]
-            print("Client A is {} with name {}".format(client_address, client_name))
-            b_address_list = client_data["peer"]
-            b_address = (b_address_list[0], b_address_list[1])
-            b_name = open_connections[b_address]
-            print("Client B is {} with name {}".format(b_address, b_name))
-            del open_connections[client_address]
-            del wait_list[client_name]
-            print("{} removed from wait_list".format(client_name))
-            response_data["status"] = "OK"
-            response_data["peer_name"] = client_data[b_name]
+            a_name = client_data["peer_name"]
+            del wait_list[a_name]
+            print("{} removed from wait_list".format(a_name))
+            # No response
+            # Do not respond to B
+            continue
         else:
             print("Received unexpected type: {}".format(interaction_type))
             response_data["status"] = "ERROR"
@@ -130,11 +126,11 @@ def connect_client(connectionSocket, client_address):
 
         # Pack server response
         response_json = json.dumps(response_data)
-        response_data = response_json.encode()
+        response_string = response_json.encode()
 
         # Send back
         print("Sending data to client {}: {}".format(client_address, response_json))
-        connectionSocket.send(response_data)
+        connectionSocket.send(response_string)
 
 # Wait for message from client
 while True:
