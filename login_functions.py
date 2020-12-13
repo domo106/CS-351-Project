@@ -1,6 +1,6 @@
 """
 Login Functions
-Used by login_server.py to handle the login logic
+Used by server.py to handle the login logic
 """
 import os
 import hashlib

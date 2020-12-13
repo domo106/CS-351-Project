@@ -3,7 +3,7 @@ import sys
 import socket
 import json
 import chat_client
-
+import time
 
 
 OK = "OK"
@@ -76,7 +76,9 @@ def main():
         return
 
     # Starting chat client...
-    chat_client.main_user_list(client_socket)
+    time.sleep(1)
+    print("Starting chat client..")
+    chat_client.main_user_list(client_socket, credentials["username"])
     # finished with chat client
     print("Chat client closed, disconnecting...")
     client_socket.close()
