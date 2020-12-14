@@ -53,7 +53,7 @@ def encrypt_message(text, keys):
 
     cipher_aes = AES.new(my_session_key, AES.MODE_EAX)
     ciphertext, tag = cipher_aes.encrypt_and_digest(encoded_text)
-    print("Got ciphertext:", ciphertext)
+    print("Sending ciphertext:", ciphertext)
     return_data = {
         "encrypted_session_key" : enc_session_key,
         "nonce" : cipher_aes.nonce,
@@ -75,6 +75,7 @@ def decrypt_message(data_dict, keys):
     tag = data_dict["tag"]
     ciphertext = data_dict["ciphertext"]
     my_private_key = keys["my_private_key"]
+    print("Got ciphertext:",ciphertext)
     # Decrypt session key
     cipher_rsa = PKCS1_OAEP.new(my_private_key)
     session_key = cipher_rsa.decrypt(encrypted_session_key)
