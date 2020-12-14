@@ -70,16 +70,11 @@ def decrypt_message(data_dict, keys):
     Keys should contain my_private_key
     Returns plaintext message
     """
-    #print("Got data in keys:",keys)
-    #for key in keys:
-    #    print(key,type(keys[key]))
-    # Fetch keys and stuff
     encrypted_session_key = data_dict["encrypted_session_key"]
     nonce = data_dict["nonce"]
     tag = data_dict["tag"]
     ciphertext = data_dict["ciphertext"]
     my_private_key = keys["my_private_key"]
-    #print("Got private Key:",my_private_key)
     # Decrypt session key
     cipher_rsa = PKCS1_OAEP.new(my_private_key)
     session_key = cipher_rsa.decrypt(encrypted_session_key)

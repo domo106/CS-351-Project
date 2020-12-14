@@ -65,7 +65,7 @@ def main():
     status = response_data["status"]
     response_type = response_data["type"]
     if status == "OK":
-        print("We're good")
+        print("Login successful!")
     elif status == "ERROR":
         print("Invalid username or password")
         client_socket.close()
@@ -76,7 +76,7 @@ def main():
         return
 
     # Starting chat client...
-    time.sleep(1)
+    #time.sleep(1)
     print("Starting chat client..")
     chat_client.main_user_list(client_socket, credentials["username"])
     # finished with chat client
@@ -116,4 +116,5 @@ def enter_credentials():
     return credentials
 
 if __name__ == "__main__":
-    main()
+    while True:
+        main()

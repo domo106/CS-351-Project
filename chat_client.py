@@ -16,16 +16,13 @@ dataSize = 1000000
 
 def get_user_list(server_socket):
 	"""Requests user_list from the server"""
-	print("Getting user_list")
 	request_data = {
 		"type":"USER_LIST"
 	}
 
 	encoded_request = json_encode(request_data)
 	server_socket.send(encoded_request)
-	print("Now we wait...")
 	server_response = server_socket.recv(dataSize)
-	print("Got response!")
 	response_data = json_decode(server_response)
 	if response_data["type"] != "USER_LIST":
 		print("Client expected USER_LIST, got:{}".format(response_data["type"]))
@@ -65,12 +62,12 @@ def await_connection(server_socket, user_name):
 
 	# Accept B
 	peer_socket, peer_address = await_socket.accept()
-	print("Connection with B Accepted")
+	#print("Connection with B Accepted")
 
 	# Await B's name
 	name_data = peer_socket.recv(dataSize)
 	name_dict = json_decode(name_data)
-	print("B Name Dict:", name_dict)
+	#print("B Name Dict:", name_dict)
 	b_name = name_dict["peer_name"]
 
 	#Await/Accept Public key of B
@@ -129,7 +126,6 @@ def establish_connection(server_socket, peer_address, peer_name, user_name):
 		"peer_public_key": RSA.import_key(a_public_string),
 		"my_session_key": b_session_string,
 	}
-	#print("B has private key:", keys["my_private_key"])
 
 	# Confirm with server
 	# This is basically optional for 2 clients
@@ -155,7 +151,7 @@ def encrypt_chat(peer_socket, keys, peer_name, user_name):
 				for key in byte_types:
 					thing = peer_socket.recv(dataSize)
 					peer_message_dict[key] = thing
-					print(key, len(key))
+					#print(key, len(key))
 
 				# JSON to text
 				message = encoding.decrypt_message(peer_message_dict, keys)
@@ -173,8 +169,6 @@ def encrypt_chat(peer_socket, keys, peer_name, user_name):
 			local_message = input("{}:".format(user_name))
 			# Text to JSON
 			message_dict = encoding.encrypt_message(local_message, keys)
-			for key in message_dict:
-				print(key, len(key))
 			# Send all JSON values
 			for key in byte_types:
 				peer_socket.send(message_dict[key])
@@ -192,7 +186,7 @@ def encrypt_chat(peer_socket, keys, peer_name, user_name):
 def main_user_list(server_socket, user_name):
 	"""Handles the user UI for user_list"""
 	user_list = get_user_list(server_socket)
-	print("Client got a user list: {}".format(user_list))
+	#print("Client got a user list: {}".format(user_list))
 	if len(user_list) == 0:
 		print("No users online, so we'll wait for an incoming connection...")
 		await_connection(server_socket, user_name)
@@ -208,16 +202,16 @@ def main_user_list(server_socket, user_name):
 			# Ask server for user_name
 			request_data = {"type":"GET_ADDRESS", "user_name":peer_name}
 			encoded_request = json_encode(request_data)
-			print("Sending Request for A's Address: {}".format(request_data))
+			#print("Sending Request for A's Address: {}".format(request_data))
 			server_socket.send(encoded_request)
 
 			encoded_response = server_socket.recv(dataSize)
 			response_dict = json_decode(encoded_response)
-			print("Got A's Address: {}".format(response_dict))
+			#print("Got A's Address: {}".format(response_dict))
 			# user_address is turned into a list, convert back to tuple
 			peer_ip, peer_port = response_dict["user_address"]
 			peer_address = (peer_ip, peer_port)
 			# Establish connection with peer
 			establish_connection(server_socket, peer_address, peer_name, user_name)
 		else:
-			print("User {} was not in the userlist.".format(peer_name))
+			print("User {} was not in the user list.".format(peer_name))
